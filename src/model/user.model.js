@@ -6,7 +6,7 @@ const jwt = require("jsonwebtoken");
 const defaultPermissions = {
   admin: ["add", "view", "edit", "delete"],
   employee: ["add", "view", "edit", "delete"],
-  job_seeker: ["view"],
+  job_seeker: ["add", "view"],
 };
 
 const userSchema = new mongoose.Schema(

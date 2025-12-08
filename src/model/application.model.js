@@ -2,44 +2,39 @@ const mongoose = require("mongoose");
 
 const applicationSchema = new mongoose.Schema(
   {
-    job: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Job",
-      required: true
-    },
+    jobId: { type: mongoose.Schema.Types.ObjectId, ref: "Job", required: true },
 
-    user: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true
+      required: true,
     },
 
-    cvUrl: {
-      type: String,
-      required: true
-    },
+    cvAssets: {},
 
     status: {
       type: String,
       enum: ["pending", "accepted", "rejected"],
-      default: "pending"
+      default: "pending",
     },
 
     paymentStatus: {
       type: String,
       enum: ["pending", "paid", "failed"],
-      default: "pending"
+      default: "pending",
     },
 
-    invoice: {
+    transId: { type: String },
+
+    invoiceId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Invoice"
-    }
+      ref: "Invoice",
+    },
   },
   { timestamps: true }
 );
 
-// Prevent duplicate applications
-applicationSchema.index({ job: 1, user: 1 }, { unique: true });
+// ⭐ prevent duplicate application
+applicationSchema.index({ jobId: 1, userId: 1 }, { unique: true });
 
 module.exports = mongoose.model("Application", applicationSchema);

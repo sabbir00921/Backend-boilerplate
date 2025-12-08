@@ -1,30 +1,28 @@
 const mongoose = require("mongoose");
 
 const invoiceSchema = new mongoose.Schema({
+  invoiceId: {
+    type: String,
+    required: true,
+  },
   amount: {
     type: Number,
-    required: true
+    required: true,
   },
 
-  user: {
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
-    required: true
+    required: true,
   },
-
-  application: {
+  applicationId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Application"
+    ref: "Application",
   },
-
-  providerId: {
-    type: String, // mock_123456
-  },
-
   createdAt: {
     type: Date,
-    default: Date.now
-  }
+    default: Date.now,
+  },
 });
 
 module.exports = mongoose.model("Invoice", invoiceSchema);

@@ -50,3 +50,5 @@ exports.validateJobCreate = async (req) => {
     throw new CustomError(400, error.message || "Validation failed");
   }
 };
+
+

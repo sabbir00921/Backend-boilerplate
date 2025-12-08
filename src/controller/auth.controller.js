@@ -18,13 +18,14 @@ exports.registration = asyncHandaler(async (req, res) => {
 // getall user
 exports.getAllUser = asyncHandaler(async (req, res) => {
   // extract query parameters
-  const { company, status } = req.query;
+  const { accountStatus } = req.query;
   const filter = {};
-  if (company) filter.company = company;
-  if (status) filter.status = status;
+  if (accountStatus) filter.accountStatus = accountStatus;
 
   // fetch users based on filter
-  const users = await UserModel.find().select("-password");
+  const users = await UserModel.find(filter).select("-password");
+  if (users.length === 0) throw new CustomError(400, "No users found");
+
   apiResponse.sendSucess(res, 200, "User list fetched", users);
 });
 

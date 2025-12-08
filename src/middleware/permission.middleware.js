@@ -18,8 +18,6 @@ const permission = (allowedRoles = [], allowedPermissions = []) => {
         );
       }
 
-      // console.log(user.role, allowedRoles);
-
       // Role check
       if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
         throw new CustomError(403, "You do not have role permission.");
@@ -36,7 +34,12 @@ const permission = (allowedRoles = [], allowedPermissions = []) => {
         }
       }
 
-      req.user = user;
+      req.user = {
+        _id: user._id,
+        email: user.email,
+        role: user.role,
+        permissions: user.permissions,
+      };
       next();
     } catch (error) {
       next(error);
