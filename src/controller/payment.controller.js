@@ -19,6 +19,7 @@ exports.success = asyncHandaler(async (req, res) => {
       transId: data.tran_id,
     });
 
+
     // create invoice
     const invoice = await invoiceModel.create({
       invoiceId: data.tran_id,
@@ -42,7 +43,7 @@ exports.success = asyncHandaler(async (req, res) => {
 exports.fail = asyncHandaler(async (req, res) => {
   console.log(req.body);
   const { val_id } = req.body;
-  const application = await ApplicationModel.findOne({
+  const application = await applicationModel.findOne({
     transId: val_id,
   });
 

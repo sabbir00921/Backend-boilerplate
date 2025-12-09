@@ -65,9 +65,7 @@ userSchema.pre("save", async function () {
   }
 });
 
-// ------------------------
 // Instance methods
-// ------------------------
 
 // Compare password
 userSchema.methods.comparePassword = async function (plainPassword) {

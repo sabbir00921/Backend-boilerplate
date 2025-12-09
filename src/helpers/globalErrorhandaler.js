@@ -10,14 +10,16 @@ const developementError = (error, res) => {
 };
 
 const productionError = (error, res) => {
-  if (error.isOperationalError) {
-    return res.status(error.statusCode).json({
-      message: error.message,
+  if (!error.isOperationalError) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
       status: error.status,
+      message: error.message,
     });
   } else {
     return res.status(500).json({
-      message: "Server failed Try again",
+      success: false,
+      message: "Internal Server Error",
     });
   }
 };

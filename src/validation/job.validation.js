@@ -10,17 +10,19 @@ const JobCreateValidationSchema = Joi.object({
     "any.required": "Job title is required.",
   }),
 
-  description: Joi.string().trim().min(5).max(1000).optional().messages({
+  description: Joi.string().trim().min(5).max(1000).required().messages({
     "string.base": "Description must be a string.",
     "string.min": "Description must be at least {#limit} characters long.",
     "string.max": "Description must not be more than {#limit} characters long.",
+    "any.required": "Job description is required.",
   }),
 
-  company: Joi.string().trim().min(2).max(100).optional().messages({
+  company: Joi.string().trim().min(2).max(100).required().messages({
     "string.base": "Company must be a string.",
     "string.min": "Company name must be at least {#limit} characters long.",
     "string.max":
       "Company name must not be more than {#limit} characters long.",
+    "any.required": "Company name is required.",
   }),
 
   location: Joi.string().trim().min(2).max(100).optional().messages({
@@ -50,5 +52,3 @@ exports.validateJobCreate = async (req) => {
     throw new CustomError(400, error.message || "Validation failed");
   }
 };
-
-

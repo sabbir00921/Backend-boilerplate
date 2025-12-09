@@ -71,6 +71,7 @@ exports.createApplication = asyncHandaler(async (req, res) => {
   };
 
   const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
+
   const sslResponse = await sslcz.init(data);
 
   application.transId = transId;
@@ -84,7 +85,12 @@ exports.createApplication = asyncHandaler(async (req, res) => {
 
 // get all applications
 exports.getAllApplications = asyncHandaler(async (req, res) => {
-  const applications = await ApplicationModel.find().populate([
+  const { paymentStatus } = req?.query;
+  const filter = {};
+  if (paymentStatus) filter.paymentStatus = paymentStatus;
+  // admin see all & employee see applications posted by this employee
+  const pa = req.user.role === "employee" ? { postedBy: req.user._id } : {};
+  const applications = await ApplicationModel.find(filter).populate([
     {
       path: "jobId",
       select: "title _id postedBy",
@@ -105,7 +111,7 @@ exports.getAllApplications = asyncHandaler(async (req, res) => {
 
   if (!filtered.length) {
     throw new CustomError(
-      400,
+      404,
       req.user.role === "employee"
         ? "No applications found for your jobs"
         : "No applications found"
@@ -181,7 +187,7 @@ exports.rejectJob = asyncHandaler(async (req, res) => {
         "You are not authorized or post this job to accept"
       );
   }
-  
+
   if (application.paymentStatus !== "paid")
     throw new CustomError(400, "Application not paid");
 

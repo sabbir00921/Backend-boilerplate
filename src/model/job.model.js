@@ -13,7 +13,16 @@ const jobSchema = new mongoose.Schema(
       required: true,
     },
     location: String,
-    salaryRange: String,
+    salaryRange: {
+      type: String,
+      default: "negotiable",
+    },
+
+    status: {
+      type: String,
+      enum: ["active", "inactive"],
+      default: "active",
+    },
 
     postedBy: {
       type: mongoose.Schema.Types.ObjectId,

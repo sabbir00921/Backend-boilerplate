@@ -12,7 +12,7 @@ router
     jobController.createJob
   );
 
-router.route("/get-all-jobs").get(authGuard, jobController.getAllJobs);
+router.route("/get-all-jobs").get(jobController.getAllJobs);
 
 router.route("/get-job/:id").get(jobController.getJobById);
 

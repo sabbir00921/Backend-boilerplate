@@ -9,10 +9,14 @@ const jwt = require("jsonwebtoken");
 exports.registration = asyncHandaler(async (req, res) => {
   const value = await validateUserCreate(req);
 
-  const user = await new UserModel(value).save();
-  if (!user) throw new CustomError(400, "Registration failed");
+  // check if user already exists
+  const userExists = await UserModel.findOne({ email: value.email });
+  if (userExists) throw new CustomError(400, "User already exists");
 
-  apiResponse.sendSucess(res, 200, "Registration successful", user);
+  const userCreated = await new UserModel(value).save();
+  if (!userCreated) throw new CustomError(400, "Registration failed");
+
+  apiResponse.sendSucess(res, 201, "Registration successful", userCreated);
 });
 
 // getall user
@@ -24,7 +28,7 @@ exports.getAllUser = asyncHandaler(async (req, res) => {
 
   // fetch users based on filter
   const users = await UserModel.find(filter).select("-password");
-  if (users.length === 0) throw new CustomError(400, "No users found");
+  if (users.length === 0) throw new CustomError(404, "No users found");
 
   apiResponse.sendSucess(res, 200, "User list fetched", users);
 });
@@ -32,24 +36,40 @@ exports.getAllUser = asyncHandaler(async (req, res) => {
 // update user
 exports.updateUser = asyncHandaler(async (req, res) => {
   const id = req.params.id;
+
+  // check duplicate email
+  if (req?.body?.email) {
+    const emailExists = await UserModel.findOne({ email: req.body.email });
+
+    if (emailExists && emailExists._id.toString() !== id)
+      throw new CustomError(400, "Email already exists for another user");
+  }
+
   const user = await UserModel.findOneAndUpdate(
     { _id: id },
     { $set: req.body },
     { new: true, runValidators: true }
-  );
+  ).select("role name email accountStatus permissions");
+  if (!user) throw new CustomError(404, "User not found");
   apiResponse.sendSucess(res, 200, "User updated", user);
 });
 
 // delete user
 exports.deleteUser = asyncHandaler(async (req, res) => {
   const id = req.params.id;
-  const user = await UserModel.findOneAndDelete({ _id: id });
+  const user = await UserModel.findOneAndDelete({ _id: id }).select(
+    "-password -__v -refreshtoken"
+  );
+  if (!user) throw new CustomError(404, "User not found");
   apiResponse.sendSucess(res, 200, "User deleted", user);
 });
 
 // login user
 exports.login = asyncHandaler(async (req, res) => {
   const { email, password } = req.body;
+
+  if (!email || !password)
+    throw new CustomError(400, "Email and password required");
 
   const user = await UserModel.findOne({ email });
   if (!user) throw new CustomError(400, "Invalid email or password");
@@ -126,13 +146,14 @@ exports.regenerateAccessToken = asyncHandaler(async (req, res) => {
   if (!refreshToken) throw new CustomError(400, "Refresh token not found");
 
   const decoded = jwt.verify(refreshToken, process.env.REFRESH_SECRET);
+  if (!decoded) throw new CustomError(400, "Invalid refresh token or expired");
   const userId = decoded.id;
 
   const user = await UserModel.findOne({ _id: userId });
-  if (!user) throw new CustomError(400, "User not found");
+  if (!user) throw new CustomError(404, "User not found");
 
   const accessToken = await user.generateAccessToken();
   if (!accessToken)
     throw new CustomError(400, "access token generation failed");
-  apiResponse.sendSucess(res, 200, "Access token regenerated", accessToken);
+  apiResponse.sendSucess(res, 200, "Access token regenerated", {accessToken});
 });
