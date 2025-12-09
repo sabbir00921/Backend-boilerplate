@@ -1,6 +1,7 @@
 const ApplicationModel = require("../model/application.model");
 const UserModel = require("../model/user.model");
 const JobModel = require("../model/job.model");
+const { apiResponse } = require("../utils/apiResponse");
 
 exports.getAnalytics = async (req, res) => {
   const totalUsers = await UserModel.countDocuments();
@@ -15,14 +16,18 @@ exports.getAnalytics = async (req, res) => {
     { $group: { _id: "$userId", count: { $sum: 1 } } },
   ]);
 
-  const paidApplications = await ApplicationModel.countDocuments({ paymentStatus: "paid" });
+  const paidApplications = await ApplicationModel.countDocuments({
+    paymentStatus: "paid",
+  });
 
-  res.status(200).json({
+  const analytics = {
     totalUsers,
     totalJobs,
     totalApplications,
     applicationsPerJob,
     applicationsPerUser,
     paidApplications,
-  });
+  };
+
+  return apiResponse.sendSucess(res, 200, "Analytics fetched", analytics);
 };

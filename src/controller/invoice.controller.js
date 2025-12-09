@@ -7,6 +7,7 @@ const applicationModel = require("../model/application.model");
 // get getallInvoice
 exports.getallInvoice = asyncHandaler(async (req, res) => {
   const invoice = await invoiceModel.find();
+  if (!invoice) throw new CustomError(404, "Invoice not found");
   apiResponse.sendSucess(res, 200, "Invoice list fetched", invoice);
 });
 
@@ -22,6 +23,8 @@ exports.getInvoiceById = asyncHandaler(async (req, res) => {
     ...(req.user.role === "job_seeker" && { userId: req.user._id }),
   };
 
+  console.log(query);
+
   const invoice = await invoiceModel
     .findOne(query)
     .populate("userId", "name email")
@@ -33,7 +36,7 @@ exports.getInvoiceById = asyncHandaler(async (req, res) => {
     });
   // .populate("jobId");
 
-  if (!invoice) throw new CustomError(400, "Invoice not found");
+  if (!invoice) throw new CustomError(404, "Invoice not found");
 
   return apiResponse.sendSucess(res, 200, "Invoice fetched", invoice);
 });
@@ -46,7 +49,5 @@ exports.deleteInvoice = asyncHandaler(async (req, res) => {
   const invoice = await invoiceModel.findOneAndDelete({ invoiceId: transId });
   if (!invoice) throw new CustomError(400, "Invoice not found");
 
-  if (!updateApplication) throw new CustomError(400, "Application not found");
-
-  apiResponse.sendSucess(res, 200, "Invoice deleted", invoice);
+  apiResponse.sendSucess(res, 200, "Invoice deleted");
 });

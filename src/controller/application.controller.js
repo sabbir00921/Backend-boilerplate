@@ -199,13 +199,33 @@ exports.rejectJob = asyncHandaler(async (req, res) => {
 // delete application
 exports.deleteApplication = asyncHandaler(async (req, res) => {
   const id = req.params.id;
-  const application = await ApplicationModel.findByIdAndDelete(id);
-  if (!application) throw new CustomError(400, "Application not found");
-  if (application.cvAssets) {
-    const deleted = await deleteCvCloudinary(application?.cvAssets?.public_id);
-    if (!deleted)
-      throw new CustomError(500, "CV delete failed from cloudinary server");
+  const application = await ApplicationModel.findById(id).populate("jobId");
+  if (!application) throw new CustomError(404, "Application not found");
+
+  // Admin can delete anything
+  if (req.user.role !== "admin") {
+    if (application.jobId.postedBy.toString() !== req.user._id.toString()) {
+      throw new CustomError(
+        403,
+        "You are not authorized to delete this application"
+      );
+    }
   }
 
-  apiResponse.sendSucess(res, 200, "Application deleted");
+  // Delete application
+  await ApplicationModel.findByIdAndDelete(id);
+
+  // delete cv from cloudinary
+  if (application.cvAssets?.public_id) {
+    const deleted = await deleteCvCloudinary(application.cvAssets.public_id);
+    if (!deleted) {
+      throw new CustomError(
+        500,
+        "CV delete failed from Cloudinary server"
+      );
+    }
+  }
+
+  return apiResponse.sendSucess(res, 200, "Application deleted");
 });
+

@@ -98,7 +98,7 @@ exports.login = asyncHandaler(async (req, res) => {
     secure: process.env.NODE_ENV === "development" ? false : true,
     sameSite: "Strict",
     path: "/",
-    maxAge: 15 * 60 * 1000,
+    maxAge: 1 * 60 * 60 * 1000,
   });
 
   // set refresh token into db
@@ -155,5 +155,5 @@ exports.regenerateAccessToken = asyncHandaler(async (req, res) => {
   const accessToken = await user.generateAccessToken();
   if (!accessToken)
     throw new CustomError(400, "access token generation failed");
-  apiResponse.sendSucess(res, 200, "Access token regenerated", {accessToken});
+  apiResponse.sendSucess(res, 200, "Access token regenerated", { accessToken });
 });
