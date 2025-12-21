@@ -82,6 +82,8 @@ exports.login = asyncHandaler(async (req, res) => {
     throw new CustomError(400, "access token generation failed");
 
   const refreshToken = await user.generateRefreshToken();
+  console.log(refreshToken);
+
   if (!refreshToken)
     throw new CustomError(400, "refresh token generation failed");
 

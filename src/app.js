@@ -7,7 +7,9 @@ const { globalErrorhandaler } = require("./helpers/globalErrorhandaler");
 const { serverLiveTemplate } = require("./template/serverLiveTemplate");
 
 // Middleware
-app.use(cors({ origin: "*" }));
+app.use(
+  cors({ origin: "*", methods: ["GET", "POST", "PUT", "PATCH", "DELETE"] })
+);
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

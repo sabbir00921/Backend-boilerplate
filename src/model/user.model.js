@@ -81,7 +81,9 @@ userSchema.methods.generateAccessToken = async function () {
       role: this.role,
     },
     process.env.ACCESTOKEN_SECRET,
-    { expiresIn: process.env.ACCESTOKEN_EXPIRE }
+    {
+      expiresIn: process.env.ACCESTOKEN_EXPIRE,
+    }
   );
 };
 
