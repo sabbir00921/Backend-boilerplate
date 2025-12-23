@@ -5,20 +5,20 @@ const { CustomError } = require("./customError");
 
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
-  api_key: process.env.API_KEY,
-  api_secret: process.env.API_SECREAT,
+  api_key: process.env.CLOUD_API_KEY,
+  api_secret: process.env.CLOUD_API_SECREAT,
 });
 
 // Upload CV to Cloudinary
-exports.uploadCvCloudinary = async (filePath) => {
+exports.uploadImageCloudinary = async (filePath) => {
   try {
     if (!filePath || !fs.existsSync(filePath)) {
       throw new CustomError(401, "CV file path missing");
     }
 
     const cloudinaryResponse = await cloudinary.uploader.upload(filePath, {
-      resource_type: "raw",
-      folder: "cv_uploads",
+      resource_type: "image",
+      folder: "Scale/images",
     });
 
     // Delete file from local server
@@ -37,18 +37,17 @@ exports.uploadCvCloudinary = async (filePath) => {
 
     throw new CustomError(
       500,
-      "Failed to upload CV file: " + (error.message || error)
+      "Failed to upload Image file: " + (error.message || error)
     );
   }
 };
 
 // Delete CV from Cloudinary
-exports.deleteCvCloudinary = async (public_id) => {
+exports.deleteImageCloudinary = async (public_id) => {
   try {
     const response = await cloudinary.uploader.destroy(public_id, {
-      resource_type: "raw",
+      resource_type: "image",
     });
-    console.log("deleted", response);
 
     return response;
   } catch (error) {

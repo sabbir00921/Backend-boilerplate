@@ -1,39 +1,14 @@
 const express = require("express");
 const router = express.Router();
 const authController = require("../../controller/auth.controller");
-const { authGuard } = require("../../middleware/auth.middleware");
-const { permission } = require("../../middleware/permission.middleware");
 
 router.route("/registration").post(authController.registration);
-
-router
-  .route("/getall-users")
-  .get(authGuard, permission(["admin"], ["view"]), authController.getAllUser);
-router.route("/login-users").post(authController.login);
-
-router
-  .route("/get-user/:id")
-  .delete(
-    authGuard,
-    permission(["admin", "employee"], ["view"]),
-    authController.deleteUser
-  );
-
-router
-  .route("/update-user/:id")
-  .put(authGuard, permission(["admin"], ["edit"]), authController.updateUser);
-
-router
-  .route("/delete-user/:id")
-  .delete(
-    authGuard,
-    permission(["admin"], ["delete"]),
-    authController.deleteUser
-  );
-
-router.route("/logout-users").post(authController.logout);
-router
-  .route("/generate-access-token")
-  .post(authController.regenerateAccessToken);
+router.route("/login").post(authController.login);
+router.route("/get-single-user/:id").get(authController.getSingleUser);
+router.route("/logout").post(authController.logout);
+router.route("/change-password").post(authController.changePassword);
+router.route("/forget-password").post(authController.forgetPassword);
+router.route("/verify-otp").post(authController.verifyForgetPasswordOtp);
+router.route("/reset-password").post(authController.resetPassword);
 
 module.exports = router;

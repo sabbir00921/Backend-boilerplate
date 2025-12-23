@@ -1,9 +1,6 @@
 const Joi = require("joi");
 const { CustomError } = require("../helpers/customError");
 
-const roles = ["admin", "employee", "job_seeker"];
-const permissions = ["add", "view", "edit", "delete"];
-
 const UserCreateValidationSchema = Joi.object({
   name: Joi.string().trim().min(3).max(50).required().messages({
     "string.base": "Name must be a string.",
@@ -31,12 +28,13 @@ const UserCreateValidationSchema = Joi.object({
         "Password must be at least 8 characters and include 1 uppercase, 1 lowercase, 1 number, and 1 special character.",
       "any.required": "Password is required.",
     }),
-
-  role: Joi.string()
-    .valid(...roles)
-    .default("job_seeker")
+  confirmPassword: Joi.string()
+    .trim()
+    .valid(Joi.ref("password"))
+    .required()
     .messages({
-      "any.only": `Role must be one of: ${roles.join(", ")}.`,
+      "any.only": "Passwords do not match.",
+      "any.required": "Confirm password is required.",
     }),
 }).unknown(true); // allow extra fields like timestamps etc.
 

@@ -2,13 +2,6 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-// Default permissions based on role
-const defaultPermissions = {
-  admin: ["add", "view", "edit", "delete"],
-  employee: ["add", "view", "edit", "delete"],
-  job_seeker: ["add", "view"],
-};
-
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
@@ -20,22 +13,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     password: { type: String, required: true },
-    role: {
+    forgetPasswordOtp: {
       type: String,
-      enum: ["admin", "employee", "job_seeker"],
-      default: "job_seeker",
     },
-    accountStatus: {
-      type: String,
-      enum: ["active", "inactive", "suspended"],
-      default: "active",
+    forgetPasswordExpires: {
+      type: Date,
     },
-    permissions: [
-      {
-        type: String,
-        enum: ["add", "view", "edit", "delete"],
-      },
-    ],
     refreshToken: {
       type: String,
     },
@@ -53,11 +36,6 @@ userSchema.pre("save", async function () {
     this.password = await bcrypt.hash(this.password, saltRounds);
   }
 
-  // Assign permissions based on role if new
-  if (this.isNew) {
-    this.permissions = defaultPermissions[this.role] || [];
-  }
-
   // Check email uniqueness
   const isExist = await this.constructor.findOne({ email: this.email });
   if (isExist && isExist._id.toString() !== this._id.toString()) {
@@ -65,11 +43,10 @@ userSchema.pre("save", async function () {
   }
 });
 
-// Instance methods
-
 // Compare password
-userSchema.methods.comparePassword = async function (plainPassword) {
-  return await bcrypt.compare(plainPassword, this.password);
+userSchema.methods.comparePassword = async function (password) {
+  if (!password) return false;
+  return bcrypt.compare(password, this.password);
 };
 
 // Generate access token

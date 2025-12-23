@@ -4,6 +4,9 @@ const UserModel = require("../model/user.model");
 const { validateUserCreate } = require("../validation/auth.validation");
 const { CustomError } = require("../helpers/customError");
 const jwt = require("jsonwebtoken");
+const { forgetPassword } = require("../template/serverLiveTemplate");
+const { mailer } = require("../helpers/nodeMailer");
+const crypto = require("crypto");
 
 // crerate user
 exports.registration = asyncHandaler(async (req, res) => {
@@ -16,146 +19,156 @@ exports.registration = asyncHandaler(async (req, res) => {
   const userCreated = await new UserModel(value).save();
   if (!userCreated) throw new CustomError(400, "Registration failed");
 
-  apiResponse.sendSucess(res, 201, "Registration successful", userCreated);
-});
-
-// getall user
-exports.getAllUser = asyncHandaler(async (req, res) => {
-  // extract query parameters
-  const { accountStatus } = req.query;
-  const filter = {};
-  if (accountStatus) filter.accountStatus = accountStatus;
-
-  // fetch users based on filter
-  const users = await UserModel.find(filter).select("-password");
-  if (users.length === 0) throw new CustomError(404, "No users found");
-
-  apiResponse.sendSucess(res, 200, "User list fetched", users);
-});
-
-// update user
-exports.updateUser = asyncHandaler(async (req, res) => {
-  const id = req.params.id;
-
-  // check duplicate email
-  if (req?.body?.email) {
-    const emailExists = await UserModel.findOne({ email: req.body.email });
-
-    if (emailExists && emailExists._id.toString() !== id)
-      throw new CustomError(400, "Email already exists for another user");
-  }
-
-  const user = await UserModel.findOneAndUpdate(
-    { _id: id },
-    { $set: req.body },
-    { new: true, runValidators: true }
-  ).select("role name email accountStatus permissions");
-  if (!user) throw new CustomError(404, "User not found");
-  apiResponse.sendSucess(res, 200, "User updated", user);
-});
-
-// delete user
-exports.deleteUser = asyncHandaler(async (req, res) => {
-  const id = req.params.id;
-  const user = await UserModel.findOneAndDelete({ _id: id }).select(
-    "-password -__v -refreshtoken"
-  );
-  if (!user) throw new CustomError(404, "User not found");
-  apiResponse.sendSucess(res, 200, "User deleted", user);
+  apiResponse.sendSucess(res, 201, "Registration successful", {
+    name: userCreated.name,
+    email: userCreated.email,
+  });
 });
 
 // login user
 exports.login = asyncHandaler(async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password)
-    throw new CustomError(400, "Email and password required");
-
+  // check if user exists
   const user = await UserModel.findOne({ email });
   if (!user) throw new CustomError(400, "Invalid email or password");
 
+  // check if password is correct
   const isMatch = await user.comparePassword(password);
   if (!isMatch) throw new CustomError(400, "Invalid email or password");
 
-  const accessToken = await user.generateAccessToken();
-  if (!accessToken)
-    throw new CustomError(400, "access token generation failed");
+  const token = await user.generateAccessToken();
+  if (!token) throw new CustomError(400, "Login failed");
 
-  const refreshToken = await user.generateRefreshToken();
-  console.log(refreshToken);
-
-  if (!refreshToken)
-    throw new CustomError(400, "refresh token generation failed");
-
-  res.cookie("RefreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: "Strict",
-    path: "/",
-    maxAge: 15 * 24 * 60 * 60 * 1000,
-  });
-
-  res.cookie("AccessToken", accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: "Strict",
-    path: "/",
-    maxAge: 1 * 60 * 60 * 1000,
-  });
-
-  // set refresh token into db
-  user.refreshToken = refreshToken;
+  // save refresh token in database
+  user.refreshToken = await user.generateRefreshToken();
   await user.save();
 
-  apiResponse.sendSucess(res, 200, "Login successful", {
-    user: user.name,
-    accessToken,
+  // set refresh token in cookie
+  res.cookie("RefreshToken", user.refreshToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "None",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   });
+
+  apiResponse.sendSucess(res, 200, "Login successful", {
+    name: user.name,
+    token,
+  });
+});
+
+// get single user
+exports.getSingleUser = asyncHandaler(async (req, res) => {
+  const { id } = req.params;
+
+  const user = await UserModel.findById(id).select(
+    "-password -forgetPasswordOtp -forgetPasswordExpires"
+  );
+  if (!user) throw new CustomError(404, "User not found");
+  apiResponse.sendSucess(res, 200, "User found", user);
 });
 
 // logout user
 exports.logout = asyncHandaler(async (req, res) => {
-  const accessToken = req?.cookies?.AccessToken;
-  if (!accessToken) throw new CustomError(400, "Access token not found");
+  // bearer token authrization
+  const refreshToken = req.headers.authorization?.replace("Bearer ", "");
+  if (!refreshToken) throw new CustomError(400, "Invalid refresh token");
 
-  const decode = jwt.verify(accessToken, process.env.ACCESTOKEN_SECRET);
-  if (!decode) throw new CustomError(400, "Invalid access token");
+  // check if user exists
+  const user = await UserModel.findOne({ refreshToken });
+  if (!user) throw new CustomError(400, "Invalid refresh token");
 
-  const user = await UserModel.findOne({ _id: decode.id });
-  if (!user) throw new CustomError(400, "User not found");
-
+  // delete refresh token from database
   user.refreshToken = null;
   await user.save();
 
-  res.clearCookie("RefreshToken", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: "Strict",
-    path: "/",
-  });
-  res.clearCookie("AccessToken", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "development" ? false : true,
-    sameSite: "Strict",
-    path: "/",
-  });
   apiResponse.sendSucess(res, 200, "Logout successful");
 });
 
-// regenerate accesstoken using refreshtoken
-exports.regenerateAccessToken = asyncHandaler(async (req, res) => {
-  const refreshToken = req.cookies.RefreshToken;
-  if (!refreshToken) throw new CustomError(400, "Refresh token not found");
+// change password
+exports.changePassword = asyncHandaler(async (req, res) => {
+  const { email, oldPassword, newPassword } = req.body;
 
-  const decoded = jwt.verify(refreshToken, process.env.REFRESH_SECRET);
-  if (!decoded) throw new CustomError(400, "Invalid refresh token or expired");
-  const userId = decoded.id;
+  // check if user exists
+  const user = await UserModel.findOne({ email });
+  if (!user) throw new CustomError(400, "User not found");
 
-  const user = await UserModel.findOne({ _id: userId });
+  // check if old password is correct
+  const isMatch = await user.comparePassword(oldPassword);
+  if (!isMatch) throw new CustomError(400, "Invalid old password");
+
+  // update password
+  user.password = newPassword;
+  await user.save();
+
+  apiResponse.sendSucess(res, 200, "Password changed successfully");
+});
+
+// forget password
+exports.forgetPassword = asyncHandaler(async (req, res) => {
+  const { email } = req.body;
+
+  // check if user exists
+  const user = await UserModel.findOne({ email });
+  if (!user) throw new CustomError(400, "User not found");
+
+  const otp = crypto.randomInt(100000, 999999).toString();
+
+  user.forgetPasswordOtp = otp;
+  user.forgetPasswordExpires = Date.now() + 10 * 60 * 1000;
+
+  // send forget password otp
+  const template = forgetPassword(user.name, otp);
+  const mailRes = await mailer("Reset password", template, user.email);
+  if (!mailRes) throw new CustomError(400, "Mail sent failed");
+
+  // save forget password otp in database
+  await user.save();
+
+  apiResponse.sendSucess(res, 200, "OTP sent successfully, check your email");
+});
+
+// veryfy forget password otp
+exports.verifyForgetPasswordOtp = asyncHandaler(async (req, res) => {
+  const { email, otp } = req.body;
+
+  // check if user exists
+  const user = await UserModel.findOne({ email });
   if (!user) throw new CustomError(404, "User not found");
 
-  const accessToken = await user.generateAccessToken();
-  if (!accessToken)
-    throw new CustomError(400, "access token generation failed");
-  apiResponse.sendSucess(res, 200, "Access token regenerated", { accessToken });
+  // check if otp is correct
+  if (user.forgetPasswordOtp !== otp) throw new CustomError(401, "Invalid OTP");
+
+  // check if otp is expired
+  if (user.forgetPasswordExpires < Date.now())
+    throw new CustomError(400, "OTP expired");
+
+  apiResponse.sendSucess(res, 200, "OTP verified successfully");
+});
+
+// reset password
+exports.resetPassword = asyncHandaler(async (req, res) => {
+  const { email, password, otp } = req.body;
+
+  // check if user exists
+  const user = await UserModel.findOne({ email });
+  if (!user) throw new CustomError(404, "User not found");
+
+  // check if otp is correct
+  if (user.forgetPasswordOtp !== otp) throw new CustomError(401, "Invalid OTP");
+
+  // check if otp is expired
+  if (user.forgetPasswordExpires < Date.now())
+    throw new CustomError(400, "OTP expired");
+
+  // hash password
+
+  // update password
+  user.password = password;
+  user.forgetPasswordOtp = null;
+  user.forgetPasswordExpires = null;
+  await user.save();
+
+  apiResponse.sendSucess(res, 200, "Password reset successfully");
 });
