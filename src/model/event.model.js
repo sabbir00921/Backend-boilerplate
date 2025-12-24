@@ -70,6 +70,12 @@ const EventSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    barhops: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "BarHop",
+      },
+    ],
     fee: {
       type: Number,
       default: 0,

@@ -104,10 +104,7 @@ exports.updateUser = asyncHandaler(async (req, res) => {
   }
   if (role == "user" && id !== userid) {
     if (id !== userid)
-      throw new CustomError(
-        403,
-        "You do not have permission or not authorized to update this user."
-      );
+      throw new CustomError(403, "You do not have permission or not authorized to update this user.");
   }
 
   const user = await UserModel.findByIdAndUpdate(id, req.body, {

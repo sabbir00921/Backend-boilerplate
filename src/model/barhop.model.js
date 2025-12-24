@@ -34,10 +34,15 @@ const BarHoppingSchema = new mongoose.Schema(
         type: String,
       },
     },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
   },
   {
     timestamps: true,
   }
 );
 
-module.exports = mongoose.model("BarHopping", BarHoppingSchema);
+module.exports = mongoose.model("BarHop", BarHoppingSchema);

@@ -66,6 +66,14 @@ const EventCreateValidationSchema = Joi.object({
       })
     )
     .optional(),
+  barhopId: Joi.string()
+    .required()
+    .custom((value, helpers) => {
+      if (!mongoose.Types.ObjectId.isValid(value)) {
+        return helpers.message("barhopId must be a valid barhop id");
+      }
+      return value;
+    }),
 }).options({ allowUnknown: false });
 
 // =======================

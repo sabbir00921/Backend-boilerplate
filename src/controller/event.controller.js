@@ -27,6 +27,7 @@ exports.createEvent = asyncHandaler(async (req, res) => {
     ...value,
     host: hostId,
     invitations,
+    barhops: value?.barhopId,
   });
 
   const eventCreate = await event.save();

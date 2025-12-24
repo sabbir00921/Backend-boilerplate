@@ -5,7 +5,7 @@ const { CustomError } = require("../helpers/customError");
 
 const authGuard = async (req, res, next) => {
   const accesstoken = req?.cookies?.AccessToken || req?.headers?.accesstoken;
-  console.log(accesstoken);
+  // console.log(accesstoken);
 
   if (!accesstoken) throw new CustomError(401, "Unauthorized access!");
 
