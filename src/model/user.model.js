@@ -13,6 +13,21 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     password: { type: String, required: true },
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+    },
+    invitations: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Event",
+      },
+    ],
+    balance: {
+      type: Number,
+      default: 0,
+    },
     forgetPasswordOtp: {
       type: String,
     },

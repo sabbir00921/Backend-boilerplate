@@ -1,56 +1,72 @@
 const Joi = require("joi");
+const mongoose = require("mongoose");
 const { CustomError } = require("../helpers/customError");
-const { default: mongoose } = require("mongoose");
 
 // =======================
-// Joi Schema (Body)
+// Joi Schema
 // =======================
-const EventValidationSchema = Joi.object({
-  name: Joi.string().trim().min(3).max(200).required().messages({
-    "string.base": "Event name must be a string.",
-    "string.empty": "Event name is required.",
-    "string.min": "Event name must be at least {#limit} characters.",
-    "string.max": "Event name must not exceed {#limit} characters.",
-    "any.required": "Event name is required.",
-  }),
+const EventCreateValidationSchema = Joi.object({
+  title: Joi.string().trim().min(3).max(200).required(),
 
-  location: Joi.string().trim().min(3).required().messages({
-    "string.base": "Location must be a string.",
-    "string.empty": "Location is required.",
-    "any.required": "Location is required.",
-  }),
+  description: Joi.string().trim().max(1000).required(),
 
-  date: Joi.date().iso().required().messages({
-    "date.base": "Event date must be a valid date.",
-    "any.required": "Event date is required.",
-  }),
+  // host: Joi.string()
+  //   .required()
+  //   .custom((value, helpers) => {
+  //     if (!mongoose.Types.ObjectId.isValid(value)) {
+  //       return helpers.message("host must be a valid user id");
+  //     }
+  //     return value;
+  //   }),
 
-  time: Joi.string()
-    .pattern(/^([01]\d|2[0-3]):([0-5]\d)\s-\s([01]\d|2[0-3]):([0-5]\d)$/)
-    .required()
-    .messages({
-      "string.pattern.base": "Time must be in HH:mm format.",
-      "any.required": "Event time is required.",
-    }),
+  startsAt: Joi.date().iso().optional(),
 
-  capacity: Joi.number().integer().min(1).required().messages({
-    "number.base": "Capacity must be a number.",
-    "number.min": "Capacity must be at least 1.",
-    "any.required": "Capacity is required.",
-  }),
-  createdBy: Joi.string()
-    .required()
-    .custom((value, helpers) => {
-      if (!mongoose.Types.ObjectId.isValid(value)) {
-        return helpers.message("createdBy must be a valid user ID.");
-      }
-      return value;
-    })
-    .messages({
-      "any.required": "createdBy user ID is required.",
-      "string.base": "createdBy must be a string.",
-    }),
-});
+  location: Joi.string().trim().max(1000).required(),
+
+  isQuickRally: Joi.boolean().optional(),
+
+  fee: Joi.number().min(0).max(100000).precision(2).optional(),
+
+  capacity: Joi.number().min(0).max(200).optional(),
+
+  participants: Joi.array()
+    .items(
+      Joi.object({
+        user: Joi.string()
+          .required()
+          .custom((value, helpers) => {
+            if (!mongoose.Types.ObjectId.isValid(value)) {
+              return helpers.message(
+                "participant user must be a valid user id"
+              );
+            }
+            return value;
+          }),
+      })
+    )
+    .optional(),
+
+  invitations: Joi.array()
+    .items(
+      Joi.string()
+        .required()
+        .custom((value, helpers) => {
+          if (!mongoose.Types.ObjectId.isValid(value)) {
+            return helpers.message("Each invitation must be a valid user id");
+          }
+          return value;
+        })
+    )
+    .optional(),
+
+  rallyStops: Joi.array()
+    .items(
+      Joi.object({
+        name: Joi.string().trim().min(2).optional(),
+      })
+    )
+    .optional(),
+}).options({ allowUnknown: false });
 
 // =======================
 // Validation Function
@@ -58,19 +74,17 @@ const EventValidationSchema = Joi.object({
 exports.validateEventCreate = async (req) => {
   try {
     // 1️⃣ Validate body
-    const value = await EventValidationSchema.validateAsync(req.body, {
+    const value = await EventCreateValidationSchema.validateAsync(req.body, {
       abortEarly: false,
     });
 
-    // 2️⃣ Image validation
-    let images = req?.files?.image;
+    // 2️⃣ Validate single image
+    const image = req.file; // ✅ single file
 
-    if (!images) {
-      throw new CustomError(400, "At least one event image is required.");
-    }
-
-    if (!Array.isArray(images)) {
-      images = [images];
+    if (!image) {
+      return {
+        value,
+      };
     }
 
     const allowedFormats = [
@@ -82,22 +96,20 @@ exports.validateEventCreate = async (req) => {
 
     const MAX_SIZE = 3 * 1024 * 1024; // 3MB
 
-    images.forEach((image) => {
-      if (!allowedFormats.includes(image.mimetype)) {
-        throw new CustomError(
-          400,
-          "Invalid image format. Allowed: jpg, jpeg, png, webp."
-        );
-      }
+    if (!allowedFormats.includes(image.mimetype)) {
+      throw new CustomError(
+        400,
+        "Invalid image format. Allowed: jpg, jpeg, png, webp"
+      );
+    }
 
-      if (image.size > MAX_SIZE) {
-        throw new CustomError(400, "Image size must be below 3MB.");
-      }
-    });
+    if (image.size > MAX_SIZE) {
+      throw new CustomError(400, "Image size must be below 3MB");
+    }
 
     return {
       value,
-      images,
+      image,
     };
   } catch (error) {
     if (error.isJoi) {
