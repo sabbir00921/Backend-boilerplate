@@ -6,14 +6,14 @@ const crypto = require("crypto");
 const {
   validateQuickRallyCreate,
 } = require("../validation/quickrally.validation");
+const { getIo } = require("../socket/server");
 
+// create quick rally
 exports.createQuickRally = asyncHandaler(async (req, res) => {
   const userId = req.user._id;
 
   const { title, description, latitude, longitude, locationName } =
     await validateQuickRallyCreate(req);
-
-  console.log(latitude, longitude);
 
   if (!latitude || !longitude) {
     throw new CustomError(400, "Current location is required");
@@ -35,6 +35,17 @@ exports.createQuickRally = asyncHandaler(async (req, res) => {
     participants: [{ user: userId }],
   });
 
+  if (!rally) {
+    throw new CustomError(500, "Quick Rally creation failed");
+  }
+
+  // socket.io emit create rally event
+  const io = getIo();
+  io.to("123").emit("createRally", {
+    message: "New Quick Rally Created",
+    data: rally,
+  });
+
   apiResponse.sendSucess(res, 201, "Quick Rally created", {
     rally,
     inviteLink: `http://localhost:5000/api/v1/quick-rally/join-quickrally/${inviteCode}`,
@@ -42,29 +53,20 @@ exports.createQuickRally = asyncHandaler(async (req, res) => {
 });
 
 // join quick rally
+// join quick rally
 exports.joinQuickRally = asyncHandaler(async (req, res) => {
   const { inviteCode } = req.params;
   const userId = req.user._id;
 
-  if (!inviteCode) {
-    throw new CustomError(400, "Invite code is required");
-  }
-
-  const rally = await QuickRally.findOne({
-    inviteCode,
-    isActive: true,
-  });
-
-  if (!rally) {
-    throw new CustomError(400, "Invalid or expired invite code");
-  }
+  const rally = await QuickRally.findOne({ inviteCode, isActive: true });
+  if (!rally) throw new CustomError(400, "Invalid invite code");
 
   const alreadyJoined = rally.participants.some(
     (p) => p.user.toString() === userId.toString()
   );
 
   if (alreadyJoined) {
-    return apiResponse.sendSucess(res, 200, "Already joined quick rally", {
+    return apiResponse.sendSucess(res, 200, "Already joined", {
       rallyId: rally._id,
     });
   }
@@ -72,9 +74,16 @@ exports.joinQuickRally = asyncHandaler(async (req, res) => {
   rally.participants.push({ user: userId });
   await rally.save();
 
-  apiResponse.sendSucess(res, 200, "Joined quick rally", {
+  // ✅ EMIT TO RALLY ROOM
+  const io = getIo();
+  io.to(rally._id.toString()).emit("rallyMemberJoined", {
     rallyId: rally._id,
-    chatEnabled: rally.chatEnabled,
+    userId,
+    message: "A new member joined the rally",
+  });
+
+  return apiResponse.sendSucess(res, 200, "Joined quick rally", {
+    rallyId: rally._id,
   });
 });
 

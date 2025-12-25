@@ -1,11 +1,11 @@
 const chalk = require("chalk");
-const app = require("./src/app");
+const { server } = require("./src/app");
 const { connectDatabase } = require("./src/database/db");
 require("dotenv").config();
 
 connectDatabase()
   .then(() => {
-    app.listen(process.env.PORT || 3000, () => {
+    server.listen(process.env.PORT || 5000, () => {
       console.log(
         chalk.green(`Server running at http://localhost:${process.env.PORT}`)
       );

@@ -24,6 +24,7 @@ const userSchema = new mongoose.Schema(
         ref: "Event",
       },
     ],
+    image: {},
     balance: {
       type: Number,
       default: 0,

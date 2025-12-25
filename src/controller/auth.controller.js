@@ -7,6 +7,7 @@ const jwt = require("jsonwebtoken");
 const { forgetPassword } = require("../template/serverLiveTemplate");
 const { mailer } = require("../helpers/nodeMailer");
 const crypto = require("crypto");
+const { uploadImageCloudinary } = require("../helpers/cloudinary");
 
 // crerate user
 exports.registration = asyncHandaler(async (req, res) => {
@@ -86,31 +87,52 @@ exports.getSingleUser = asyncHandaler(async (req, res) => {
 
 // update user
 exports.updateUser = asyncHandaler(async (req, res) => {
-  const { _id: id, role } = req?.user;
-  const userid = req?.params?.userid;
+  const { _id: id, role } = req.user;
+  const userid = req.params.userid;
 
-  if (role == "admin") {
-    if (!userid) throw new CustomError(400, "User id is required");
+  if (req.file) {
+    const imageAsset = await uploadImageCloudinary(req.file.path);
+    if(!imageAsset) throw new CustomError(500, "Image upload failed"); 
+    req.body.image = imageAsset;
+  }
+
+  // ADMIN: can update any user
+  if (role === "admin") {
+    if (!userid) {
+      throw new CustomError(400, "User id is required");
+    }
+
     const user = await UserModel.findByIdAndUpdate(userid, req.body, {
       new: true,
+      runValidators: true,
     });
-    if (!user) throw new CustomError(404, "User not found");
-    apiResponse.sendSucess(
+
+    if (!user) {
+      throw new CustomError(404, "User not found");
+    }
+
+    // ✅ STOP execution here
+    return apiResponse.sendSucess(
       res,
       200,
       "User updated by admin successfully",
       user
     );
   }
-  if (role == "user" && id !== userid) {
-    if (id !== userid)
-      throw new CustomError(403, "You do not have permission or not authorized to update this user.");
+
+  // USER: can update only own profile
+  if (role === "user" && id.toString() !== userid) {
+    throw new CustomError(403, "You are not authorized to update this user");
   }
 
   const user = await UserModel.findByIdAndUpdate(id, req.body, {
     new: true,
   });
-  if (!user) throw new CustomError(404, "User not found");
+
+  if (!user) {
+    throw new CustomError(404, "User not found");
+  }
+
   apiResponse.sendSucess(res, 200, "User updated successfully", user);
 });
 

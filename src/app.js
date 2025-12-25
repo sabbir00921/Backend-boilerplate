@@ -3,8 +3,13 @@ const app = express();
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const morgan = require("morgan");
+const http = require("http");
+
 const { globalErrorhandaler } = require("./helpers/globalErrorhandaler");
 const { serverLiveTemplate } = require("./template/serverLiveTemplate");
+const { initSoket, initSocket } = require("./socket/server");
+
+const server = http.createServer(app);
 
 // Middleware
 app.use(
@@ -25,4 +30,7 @@ app.use("/api/v1", require("./routes/index.api"));
 
 // global error handler
 app.use(globalErrorhandaler);
-module.exports = app;
+
+const io = initSocket(server);
+
+module.exports = { server, io };
